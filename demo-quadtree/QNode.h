@@ -3,6 +3,7 @@
 #include "QObject.h"
 #include <list>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -15,19 +16,14 @@ enum QNODE_POSITION
 	RIGHTBOTTOM = 2
 };
 
-const int MAX_QUADTREE_DEPTH = 5;
-const int MAX_OBJECT_CONTAIN = 10;	// low priority
-
 class QNode
 {
 
-
 public:
-	unsigned int maxLevel;
+	static const int MAX_OBJECTS = 3;
+	static const int MAX_LEVEL = 5;
 	unsigned int currentLevel;
-	unsigned int maxObjectNum;
 	
-
 	int left;
 	int right;
 	int top;
@@ -35,16 +31,12 @@ public:
 	int position;
 
 	QNode* parent;
-	QNode* lt;
-	QNode* rt;
-	QNode* lb;
-	QNode* rb;
-
+	QNode** children;
 
 	list<QObject*> listQObject;	/// ??? co can * ko
 
 	QNode(void);
-	QNode(int curLvl, int l, int r, int t, int b, int pos, list<QObject*> listObj, QNode* childrent);
+	QNode(int curLvl, int l, int r, int t, int b, int pos = ROOT, QNode* pa = NULL, list<QObject*> listObj = list<QObject*>());
 	~QNode(void);
 
 	void addQObject(QObject* qObj);
@@ -55,9 +47,14 @@ public:
 	/**
 	*	method splits the node into four subnodes by dividing the node into four equal parts and initializing the four subnodes with the new bounds
 	**/
-	void split(); // co index
-	vector<QObject*> getAllObjectsByArea();
+	void split();
+	list<QObject*> getAllObjectsByArea(list<QObject*> &returnObjects, int x, int y, int w, int h);
+	list<QObject*> getAllObjects();
 
+	int centerX();
+	int centerY();
 
+	// func for unit test
+	void printBound();
 };
 

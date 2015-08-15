@@ -1,11 +1,8 @@
 #include "QNode.h"
 
-
 QNode::QNode(void)
 {
-	maxLevel = MAX_QUADTREE_DEPTH;
 	currentLevel = 0;
-	maxObjectNum = MAX_OBJECT_CONTAIN;
 
 	left = 0;
 	right = 0;
@@ -13,17 +10,16 @@ QNode::QNode(void)
 	bottom = 0;
 	position = ROOT;
 
-	childNodes = NULL;
+	parent = NULL;
+	children = NULL;
 
 	listQObject = list<QObject*>();	/// ??? co can * ko
 
 }
 
-QNode::QNode(int curLvl, int l, int r, int t, int b, int pos = , list<QObject*> listObj = list<QObject*>(), QNode* childrent = NULL)
+QNode::QNode(int curLvl, int l, int r, int t, int b, int pos, QNode* pa, list<QObject*> listObj)
 {
-	maxLevel = MAX_QUADTREE_DEPTH;
 	currentLevel = curLvl;
-	maxObjectNum = MAX_OBJECT_CONTAIN;
 
 	left = l;
 	right = r;
@@ -31,21 +27,47 @@ QNode::QNode(int curLvl, int l, int r, int t, int b, int pos = , list<QObject*> 
 	bottom = b;
 	position = pos;
 
-	childNodes = childrent;
+	parent = pa;
+	children = NULL;
 
-	listQObject = listObj;	/// ??? co can * ko
+	listQObject = listObj;
 
 }
 
 QNode::~QNode(void)
 {
-	delete(childNodes);
+	delete(children);
+	delete(parent);
 	listQObject.~list();
 }
 
 void QNode::addQObject(QObject* qObj)
 {
-	listQObject.push_back(qObj);
+	// if this NODE has SubNodes, find position and add obj to correct SubNode
+	if (children != NULL)
+	{
+		int index = getChildQNodePosition(qObj);
+		if (index != -1)
+		{
+			children[index]->addQObject(qObj);
+		} else {
+			listQObject.push_back(qObj);
+		}
+	} else // if not has SubNode,
+	{
+		listQObject.push_back(qObj);
+		printBound();
+
+		// if pass to MAX_OBJECTS, split NODE to 4 SubNodes
+		if (listQObject.size() > MAX_OBJECTS)
+		{
+			// if MAX_LEVEL, do nothing
+			if (this->currentLevel < MAX_LEVEL)
+			{
+				this->split();
+			}
+		}
+	}
 }
 
 void QNode::removeQObject(QObject* qObj)
@@ -55,37 +77,36 @@ void QNode::removeQObject(QObject* qObj)
 
 int QNode::getChildQNodePosition(QObject* qObj)
 {
-	if (listQObject.size() <= maxObjectNum)
+	//if (listQObject.size() <= MAX_OBJECTS)
+	//{
+	//	return ROOT;
+	//}
+	
+	if (currentLevel >= MAX_LEVEL)
 	{
 		return ROOT;
 	}
 	
-	if (currentLevel >= maxLevel)
-	{
-		return ROOT;
-	}
 	
-	int qNodeCenterX = (this->left + this->right)/2;
-	int qNodeCenterY = (this->top + this->bottom)/2;
 
-	if (qObj->x > qNodeCenterX) // obj belong to right area
+	if (qObj->x > centerX()) // obj belong to right area
 	{
-		if (qObj->y > qNodeCenterY) // obj belong to top area
+		if (qObj->y > centerY()) // obj belong to top area
 		{
 			return RIGHTTOP;
-		} else if (qObj->y + qObj->height < qNodeCenterY)	// obj belong to bottom area
+		} else if (qObj->y + qObj->height < centerY())	// obj belong to bottom area
 		{
 			return RIGHTBOTTOM;
 		} else
 		{
 			return ROOT;	// obj belong to this Node area (add to parent node)
 		}
-	} else if (qObj->x + qObj->width < qNodeCenterX)	// obj belong to left area
+	} else if (qObj->x + qObj->width < centerX())	// obj belong to left area
 	{
-		if (qObj->y > qNodeCenterY) // obj belong to top area
+		if (qObj->y > centerY()) // obj belong to top area
 		{
 			return LEFTTOP;
-		} else if (qObj->y + qObj->height < qNodeCenterY)	// obj belong to bottom area
+		} else if (qObj->y + qObj->height < centerY())	// obj belong to bottom area
 		{
 			return LEFTBOTTOM;
 		} else
@@ -98,28 +119,80 @@ int QNode::getChildQNodePosition(QObject* qObj)
 	}
 }
 
-void QNode::clear()
+void QNode::clear() // clear this NODE and SubNodes
 {
 	listQObject.empty();
-	if (this->childNodes != NULL)
+	if (this->children != NULL)
 	{
 		for(int i = 0; i < 4; i++)
 		{
-			childNodes[i]->clear();
+			children[i]->clear();
 		}
-		childNodes->clear();
-		childNodes = NULL;
+		children = NULL;
 	}
 	
 }
 
 void QNode::split()
 {
+	children = new QNode*[4];
+	children[LEFTTOP] = new QNode(currentLevel + 1, left, centerX(), top, centerY(), LEFTTOP, this);
+	children[RIGHTTOP] = new QNode(currentLevel + 1, centerX(), right, top, centerY(), RIGHTTOP, this);
+	children[LEFTBOTTOM] = new QNode(currentLevel + 1, left, centerX(), centerY(), bottom, LEFTBOTTOM, this);
+	children[RIGHTBOTTOM] = new QNode(currentLevel + 1, centerX(), right, centerY(), bottom, RIGHTBOTTOM, this);
+
+	list<QObject *> tempList = listQObject;
 	
+	listQObject.clear();
+
+	for (list<QObject*>::iterator ite = tempList.begin(); ite != tempList.end(); ite++)
+	{
+		addQObject(*ite);	
+	}
+
 }
 
-vector<QObject*> QNode::getAllObjectsByArea()
+list<QObject*> QNode::getAllObjectsByArea(list<QObject*> &returnObjects, int x, int y, int w, int h)
 {
-	
+	int index = getChildQNodePosition(new QObject(x, y, w, h));
+	if (index != ROOT && children != NULL) // if not leafNode && object area is contained in one of quadrant
+	{
+		children[index]->getAllObjectsByArea(returnObjects, x, y, w, h);
+	}
+
+	returnObjects.merge(listQObject);
+
+
+	return returnObjects;
+}
+
+list<QObject*> QNode::getAllObjects()
+{
+	list<QObject *> result;
+	result.merge(listQObject);
+
+	// recursion
+	for (int i = 0; i < 4; i++)
+	{
+		result.merge(children[i]->getAllObjects());
+	}
+
+
+	return result;
+}
+
+int QNode::centerX()
+{
+	return (this->left + this->right)>>1;
+}
+
+int QNode::centerY()
+{
+	return (this->top + this->bottom)>>1;
+}
+
+void QNode::printBound()
+{
+	cout<< currentLevel <<":"<< left<< ","<<right<< ","<< top<< ","<< bottom<< "," <<endl;
 }
 
