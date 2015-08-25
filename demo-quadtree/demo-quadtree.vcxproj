@@ -76,11 +76,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="QObject.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="QNode.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameObject.h" />
     <ClInclude Include="QObject.h" />
     <ClInclude Include="QNode.h" />
   </ItemGroup>

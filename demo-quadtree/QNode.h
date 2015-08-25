@@ -4,6 +4,7 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <math.h>
 
 using namespace std;
 
@@ -48,6 +49,9 @@ public:
 	*	method splits the node into four subnodes by dividing the node into four equal parts and initializing the four subnodes with the new bounds
 	**/
 	void split();
+	// return an array 4 elements
+	bool* getIntersectChild(RECT bound);
+	
 	list<QObject*> getAllObjectsByArea(list<QObject*> &returnObjects, int x, int y, int w, int h);
 	list<QObject*> getAllObjects();
 

@@ -43,17 +43,36 @@ QNode::~QNode(void)
 
 void QNode::addQObject(QObject* qObj)
 {
-	// if this NODE has SubNodes, find position and add obj to correct SubNode
+	// if non-leaf NODE, find position and add obj to correct SubNode
 	if (children != NULL)
 	{
 		int index = getChildQNodePosition(qObj);
-		if (index != -1)
+		if (index != ROOT)
 		{
 			children[index]->addQObject(qObj);
 		} else {
-			listQObject.push_back(qObj);
+			//listQObject.push_back(qObj);
+			// clip()
+
+			// check
+
+			QObject* clipped = new QObject[4];
+			for (int i = 0; i < 4; i++)
+			{
+				clipped[i] = QObject();
+			}
+			clipped[LEFTTOP].init(qObj->left(), min(this->centerX(), qObj->right()), qObj->top(), max(this->centerY(), qObj->bottom()), qObj->entity);
+			clipped[RIGHTTOP].init(max(qObj->left(), this->centerX()), qObj->right(), qObj->top(), max(this->centerY(), qObj->bottom()), qObj->entity);
+			clipped[RIGHTBOTTOM].init(max(qObj->left(), this->centerX()), qObj->right(), min(this->centerY(), qObj->top()), qObj->bottom(), qObj->entity);
+			clipped[LEFTBOTTOM].init(qObj->left(), min(this->centerX(), qObj->right()), min(this->centerY(), qObj->top()), qObj->bottom(), qObj->entity);
+
+			for (int i = 0; i < 4; i++)
+			{
+				clipped[i] = QObject();
+			}
+
 		}
-	} else // if not has SubNode,
+	} else // if leaf NODE,
 	{
 		listQObject.push_back(qObj);
 		printBound();
@@ -121,7 +140,7 @@ int QNode::getChildQNodePosition(QObject* qObj)
 
 void QNode::clear() // clear this NODE and SubNodes
 {
-	listQObject.empty();
+	listQObject.clear();
 	if (this->children != NULL)
 	{
 		for(int i = 0; i < 4; i++)
@@ -152,9 +171,14 @@ void QNode::split()
 
 }
 
+bool* QNode::getIntersectChild(RECT bound)
+{
+	
+}
+
 list<QObject*> QNode::getAllObjectsByArea(list<QObject*> &returnObjects, int x, int y, int w, int h)
 {
-	int index = getChildQNodePosition(new QObject(x, y, w, h));
+	int index = getChildQNodePosition(new QObject(x, y, w, h, NULL));
 	if (index != ROOT && children != NULL) // if not leafNode && object area is contained in one of quadrant
 	{
 		children[index]->getAllObjectsByArea(returnObjects, x, y, w, h);
